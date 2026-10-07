@@ -10,12 +10,13 @@ fn main() {
     let rdr = fs::read(path);
 
     if let Ok(bytes) = rdr {
+        println!("{}", bytes.len()/3);
         for byte in bytes {
             println!("{byte:b}");
-            let last_4 = byte << 4;
-            println!("last: {last_4:b}");
-            let first_4 = byte >> 4;
-            println!("first: {first_4:b}");
+            // let last_4 = (byte << 4) >> 4;
+            // println!("last: {last_4:b}");
+            // let first_4 = byte >> 4;
+            // println!("first: {first_4:b}");
         }
     }
 
