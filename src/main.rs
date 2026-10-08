@@ -1,53 +1,50 @@
 #![allow(unused)]
 
+mod header;
+
+use crate::header::*;
+use std::ffi::OsStr;
 use std::fs;
-use std::ops::Rem;
 use std::path::Path;
 
-struct Color(u8,u8,u8);
-
-struct Position(i32,i32);
-
-struct Pixel {
-    color: Color,
-    position: Position,
-}
-
-fn main() {
+fn main() -> Result<(), FileError> {
     let path = Path::new("src/rand.txt");
+
+    if let Some(extension) = path.extension() {
+        if extension != OsStr::new("txt") {return Err(FileError::Extension);}
+    }
 
     let rdr = fs::read(path);
 
-    if let Ok(bytes) = rdr {
-        let nbytes = 24;
-        if divide_by_3(nbytes as i32).1 == 0 {
-            select_per_color(&bytes);
-        } else {
-            //other function
-        }
+    match rdr {
+        Ok(bytes) => {
+            if bytes.is_empty() {
+                return Err(FileError::InsufficientLength);
+            }
+            let nbytes = bytes.len();
+            colors(&bytes, nbytes as i32);
+        },
+        Err(e) => {return Err(FileError::Read(e))}
     }
 
+    Ok(())
 }
 
-fn range_wrap<T: Rem<Output = T>>(x: T, max: T) -> T {
-    x % max
+//Quotient = #pixels we will have
+fn colors(bytes: &[u8], nbytes: i32) {
+    if let Ok(div_result) = divide_by(nbytes, 3) {
+
+    }
 }
 
-fn divisible_by_3(num: usize) -> bool {
-    num % 3 == 0
+fn divide_by(numerator: i32, denominator: i32) -> Result<Division<i32>, String> {
+    if denominator == 0 {
+        return Err(String::from("Division by zero"))
+    }
+    Ok(Division{quotient: numerator/denominator, remainder: numerator%denominator})
 }
 
-fn divide_by_3(num: i32) -> (i32, i32) {
-    (num/3, num%3)
-}
-
-fn select_per_color(bytes: &[u8]) -> Vec<Color> {
-    bytes.chunks_exact(3)
-        .map(|c| Color(c[0],c[1],c[2]))
-        .collect()
-}
-
-fn select_per_clor(bytes: &[u8]) -> Vec<Color> {
+fn set_colors(bytes: &[u8]) -> Vec<Color> {
     bytes.as_chunks::<3>().0.iter()
         .map(|&[r,g,b]| Color(r,g,b))
         .collect()
