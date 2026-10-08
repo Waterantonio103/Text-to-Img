@@ -8,24 +8,21 @@ use std::fs;
 use std::path::Path;
 
 fn main() -> Result<(), FileError> {
-    let path = Path::new("src/rand.txt");
+    let file = "src/rand.txt";
+    let path = Path::new(file);
+    let target_extension = OsStr::new("txt");
 
     if let Some(extension) = path.extension() {
-        if extension != OsStr::new("txt") {return Err(FileError::Extension);}
+        if extension != target_extension {return Err(FileError::InvalidExtension(format!("Invalid file extension {{ Current -> '.{}' Required -> '.{}' }}", extension.display(), target_extension.display())));}
     }
 
-    let rdr = fs::read(path);
+    let bytes = fs::read(path)?;
 
-    match rdr {
-        Ok(bytes) => {
-            if bytes.is_empty() {
-                return Err(FileError::InsufficientLength);
-            }
-            let nbytes = bytes.len();
-            colors(&bytes, nbytes as i32);
-        },
-        Err(e) => {return Err(FileError::Read(e))}
+    if bytes.len() < 3 {
+        return Err(FileError::InsufficientLength(format!("Insufficient Bytes {{ Current -> '{}' Minimum -> '{}' }}", bytes.len(), 3)));
     }
+    let nbytes = bytes.len();
+    colors(&bytes, nbytes as i32);
 
     Ok(())
 }

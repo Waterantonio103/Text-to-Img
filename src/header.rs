@@ -1,10 +1,26 @@
 use std::ops::{Div, Rem};
+use std::fmt::{self, Debug, Display};
 
-#[derive(Debug)]
 pub enum FileError {
-    Extension,
+    InvalidExtension(String),
     Read(std::io::Error),
-    InsufficientLength,
+    InsufficientLength(String),
+}
+
+impl From<std::io::Error> for FileError {
+    fn from(value: std::io::Error) -> Self {
+        FileError::Read(value)
+    }
+}
+
+impl Debug for FileError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FileError::InvalidExtension(e) => {write!(f,"{}",e)},
+            FileError::Read(e) => {write!(f,"{}", e)},
+            FileError::InsufficientLength(e) => {write!(f,"{}", e)},
+        }
+    }
 }
 
 pub struct Division<T: Div<Output = T> + Rem<Output = T>> {
