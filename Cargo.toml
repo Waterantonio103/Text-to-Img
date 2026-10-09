@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+num = "0.4.3"
+num-integer = "0.1.47"
+rand = "0.10.3"

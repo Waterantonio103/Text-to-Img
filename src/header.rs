@@ -28,6 +28,7 @@ pub struct Division<T: Div<Output = T> + Rem<Output = T>> {
     pub remainder: T,
 }
 
+#[derive(Debug)]
 pub struct Color(pub u8,pub u8,pub u8);
 
 pub struct Position(pub i32,pub i32);
