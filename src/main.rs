@@ -7,6 +7,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use rand::{Rng, RngExt, seq::IndexedRandom};
+use image::{ImageBuffer, RgbImage};
 
 fn main() -> Result<(), FileError> {
     let file = "src/rand.txt";
@@ -23,21 +24,47 @@ fn main() -> Result<(), FileError> {
     if nbytes < 3 {
         return Err(FileError::InsufficientLength(format!("Insufficient Bytes {{ Current -> '{}' Minimum -> '{}' }}", nbytes, 3)));
     }
-    colors(bytes, nbytes);
+
+    //deal with these -- !!TEMPORARY
+    let width = 512;
+    let height = 512;
+
+    let pixels = construct_pixels(&colors(bytes, nbytes), width, height);
+
+    let mut img = RgbImage::new(width, height);
+
+    for pixel in pixels {
+        //careful with width and height, panics here if out of bounds, double check
+        img.put_pixel(
+            pixel.position.0, 
+            pixel.position.1,
+            image::Rgb([pixel.color.0, pixel.color.1, pixel.color.2]));
+    }
+
+    //temporary placeholder to control flow, replace temp with actual file, possible created using fs?
+    img.save(Path::new("temp"));
 
     Ok(())
 }
 
-//Quotient = #pixels we will have
-fn colors(mut bytes: Vec<u8>, nbytes: usize) -> Result<(), String> {
-    //Careful, result from divide_by never used
-    let mut fill_in_bytes = fill_bytes(&bytes, nbytes)?;
+fn construct_pixels(colors: &[Color], width: u32, height: u32) -> Vec<Pixel> {
+    let mut pixels: Vec<Pixel> = Vec::new();
+    for color in colors.iter().copied() {
+        for hgt in 0..height {
+            for wdt in 0..width {
+                pixels.push(Pixel { color, position: Position(wdt, hgt) });
+            }
+        }
+    }
+    pixels
+}
+
+fn colors(mut bytes: Vec<u8>, nbytes: usize) -> Vec<Color> {
+    let mut fill_in_bytes = fill_bytes(&bytes, nbytes);
     if !fill_in_bytes.is_empty() {
         bytes.append(&mut fill_in_bytes);
     }
-    let colors = set_colors(&bytes);
-    dbg!(&colors);
-    Ok(())
+    set_colors(&bytes)
 }
 
 fn set_colors(bytes: &[u8]) -> Vec<Color> {
@@ -46,12 +73,12 @@ fn set_colors(bytes: &[u8]) -> Vec<Color> {
     .collect()
 }
 
-fn fill_bytes(bytes: &[u8], nbytes: usize) -> Result<Vec<u8>, String> {
+fn fill_bytes(bytes: &[u8], nbytes: usize) -> Vec<u8> {
     let std_dev = std_deviation(bytes);
     let mut offset = 0;
     let mut values: Vec<u8> = Vec::new();
-    let div_result = divide_by(nbytes as i32, 3)?;
-    if div_result.remainder == 0 {return Ok(values);}
+    let div_result = divide_by(nbytes as i32, 3).unwrap();
+    if div_result.remainder == 0 {return values;}
     while div_result.remainder + offset != 3 {
         let mut rng = rand::rng();
         let rand_byte = bytes.choose(&mut rng).unwrap_or(&0);
@@ -59,7 +86,7 @@ fn fill_bytes(bytes: &[u8], nbytes: usize) -> Result<Vec<u8>, String> {
         values.push(byte);
         offset += 1;
     }
-    Ok(values)
+    values
 }
 
 fn divide_by(ntr: i32, dtr: i32) -> Result<Division<i32>, String> {
@@ -96,7 +123,7 @@ use crate::{colors, fill_bytes};
     fn test_byte_logic() {
         let bytes = vec![];
         let nbytes = 1046;
-        assert_eq!(fill_bytes(&bytes, nbytes).unwrap().len(), 1)
+        assert_eq!(fill_bytes(&bytes, nbytes).len(), 1)
     }
 
     #[test]
