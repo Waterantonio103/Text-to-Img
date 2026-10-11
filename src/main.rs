@@ -1,15 +1,20 @@
 #![allow(unused)]
 
 mod header;
+mod args;
 
 use crate::header::*;
+use crate::args::Args;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use rand::{Rng, RngExt, seq::IndexedRandom};
 use image::{ImageBuffer, RgbImage};
+use clap::Parser;
 
 fn main() -> Result<(), FileError> {
+    // let args = Args::parse();
+
     let file = "src/rand.txt";
     let path = Path::new(file);
     let target_extension = OsStr::new("txt");
@@ -25,11 +30,10 @@ fn main() -> Result<(), FileError> {
         return Err(FileError::InsufficientLength(format!("Insufficient Bytes {{ Current -> '{}' Minimum -> '{}' }}", nbytes, 3)));
     }
 
-    //deal with these -- !!TEMPORARY
-    let width = 512;
-    let height = 512;
+    let colors = colors(bytes, nbytes);
+    let (width, height) = dimensions(colors.len() as f64);
 
-    let pixels = construct_pixels(&colors(bytes, nbytes), width, height);
+    let pixels = construct_pixels(colors, width, height);
 
     let mut img = RgbImage::new(width, height);
 
@@ -42,21 +46,64 @@ fn main() -> Result<(), FileError> {
     }
 
     //temporary placeholder to control flow, replace temp with actual file, possible created using fs?
-    img.save(Path::new("temp"));
+    img.save(Path::new("src/test3.png"));
 
     Ok(())
 }
 
-fn construct_pixels(colors: &[Color], width: u32, height: u32) -> Vec<Pixel> {
-    let mut pixels: Vec<Pixel> = Vec::new();
-    for color in colors.iter().copied() {
-        for hgt in 0..height {
-            for wdt in 0..width {
-                pixels.push(Pixel { color, position: Position(wdt, hgt) });
-            }
+fn construct_pixels(mut colors: Vec<Color>, width: u32, height: u32) -> Vec<Pixel> {
+    let lngt = colors.len();
+    let difference = (lngt).saturating_sub((width as usize) * (height as usize));
+    if difference != 0 {
+        for _ in 0..difference {
+            colors.pop();
         }
     }
+    let mut pixels: Vec<Pixel> = Vec::new();
+    for (i, color) in colors.iter().copied().enumerate() {
+        let x = (i % width as usize) as u32;
+        let y = (i / width as usize) as u32;
+
+        pixels.push(Pixel {
+                color,
+                position: Position(x, y),
+            }
+        );
+    }
     pixels
+}
+
+fn dimensions(size: f64) -> (u32, u32) {
+    const LIMIT: f64 = 100_000_000.0;
+    const PERCENTAGE: f64 = 0.0001;
+    let p: f64 = if size > LIMIT {
+        LIMIT
+    } else {
+        size
+    };
+    let depth = (p * PERCENTAGE).ceil() as u32;
+    let mut best_score = f64::MAX;
+    let mut dimensions = (0,0);
+    for outer_step in 0..depth {
+        let inner_p = p - (outer_step as f64);
+        let starter: f64 = inner_p.sqrt().floor();
+        let mut inner_step: f64 = 0.0;
+        let mut check_div = inner_p % (starter - inner_step);
+        while check_div != 0.0 {
+            inner_step += 1.0;
+            check_div = inner_p % (starter - inner_step);
+        }
+        let width = starter - inner_step;
+        let height = inner_p / width;
+        let score = height.max(width) / height.min(width);
+        if score < best_score {
+            best_score=score; 
+            dimensions=(width as u32, height as u32);
+        }
+        if score == 1.0 { break; }
+    }
+
+    return dimensions;
 }
 
 fn colors(mut bytes: Vec<u8>, nbytes: usize) -> Vec<Color> {
@@ -107,9 +154,9 @@ fn std_deviation(set: &[u8]) -> u8 {
 
 fn set_and_clamp(byte: u8, std_dev: u8) -> u8 {
     if byte >= u8::MAX/2 {
-        (byte - std_dev) % u8::MAX
+        byte.saturating_sub(std_dev)
     } else {
-        (byte + std_dev) % u8::MAX
+        byte.saturating_add(std_dev)
     }
 }
 
